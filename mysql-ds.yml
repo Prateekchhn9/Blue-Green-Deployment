@@ -1,5 +1,5 @@
 ---
-# MySQL Deployment with Resource Requests
+# MySQL Deployment with Resource Requests 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
