@@ -14,6 +14,8 @@ spec:
         app: bankapp
         version: green
     spec:
+      imagePullSecrets:
+      - name: regcred
       containers:
       - name: bankapp
         image: prateekchhn9/bluegreendeployment:green # Adjust the image tag for the green version
