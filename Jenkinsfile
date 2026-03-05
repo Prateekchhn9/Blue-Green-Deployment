@@ -8,7 +8,7 @@ pipeline {
     }
     
     tools{
-        jdk 'jdk17'
+        jdk 'jdk21'
         maven 'maven3'
     }
     
@@ -65,18 +65,14 @@ pipeline {
         }
         stage('Publish artifacts to nexus') {
             steps {
-                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
+                withMaven(globalMavenSettingsConfig: 'maven-settings', jdk: 'jdk21', maven: 'maven3', traceability: true) {
                 sh 'mvn deploy -DskipTests=true'
                 }
             }
         }
         stage('Docker build and tag') {
             steps {
-                script{
-                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                    sh 'docker build -t ${IMAGE_NAME}:${TAG} .'
-                    }
-                }
+                sh 'docker build -t ${IMAGE_NAME}:${TAG} .'
             }
         }
         stage('Trivy image scan') {
@@ -84,18 +80,26 @@ pipeline {
                 sh 'trivy image --format table -o image.html ${IMAGE_NAME}:${TAG}'
             }
         }
+        /*
+        stage('Docker login') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-cred',usernameVariable: 'DOCKER_USER',passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo $DOCKER_PASS | /usr/bin/docker login \
+                        -u $DOCKER_USER --password-stdin
+                    '''
+                }
+            }
+        }
+        */
         stage('Docker push') {
             steps {
-                script{
-                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
                     sh 'docker push ${IMAGE_NAME}:${TAG}'
-                    }
-                }
             }
         }
         stage('EKS deployment') {
             steps {
-                withKubeConfig(caCertificate: '', clusterName: 'prtk-cluster', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://E95C1D07BCFA0254F670A245D4E35ABA.gr7.us-east-1.eks.amazonaws.com') {
+                withKubeConfig(caCertificate: '', clusterName: 'prtk-cluster', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://ED1EEACC0C82346E0053DA1D0DAC2B10.gr7.us-east-1.eks.amazonaws.com') {
                 sh 'kubectl apply -f mysql-ds.yml -n ${KUBE_NAMESPACE}'
                 }
             }
@@ -103,7 +107,7 @@ pipeline {
         stage('Deploy SVC-APP') {
             steps {
                 script {
-                    withKubeConfig(caCertificate: '', clusterName: 'prtk-cluster', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://E95C1D07BCFA0254F670A245D4E35ABA.gr7.us-east-1.eks.amazonaws.com') {
+                    withKubeConfig(caCertificate: '', clusterName: 'prtk-cluster', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://ED1EEACC0C82346E0053DA1D0DAC2B10.gr7.us-east-1.eks.amazonaws.com') {
                         sh """ if ! kubectl get svc bankapp-service -n ${KUBE_NAMESPACE}; then
                                 kubectl apply -f bankapp-service.yml -n ${KUBE_NAMESPACE}
                               fi
@@ -122,7 +126,7 @@ pipeline {
                         deploymentFile = 'app-deployment-green.yml'
                     }
 
-                    withKubeConfig(caCertificate: '', clusterName: 'prtk-cluster', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://E95C1D07BCFA0254F670A245D4E35ABA.gr7.us-east-1.eks.amazonaws.com') {
+                    withKubeConfig(caCertificate: '', clusterName: 'prtk-cluster', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://ED1EEACC0C82346E0053DA1D0DAC2B10.gr7.us-east-1.eks.amazonaws.com') {
                         sh "kubectl apply -f ${deploymentFile} -n ${KUBE_NAMESPACE}"
                     }
                 }
@@ -137,7 +141,7 @@ pipeline {
                     def newEnv = params.DEPLOY_ENV
 
                     // Always switch traffic based on DEPLOY_ENV
-                     withKubeConfig(caCertificate: '', clusterName: 'prtk-cluster', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://E95C1D07BCFA0254F670A245D4E35ABA.gr7.us-east-1.eks.amazonaws.com') {
+                     withKubeConfig(caCertificate: '', clusterName: 'prtk-cluster', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://ED1EEACC0C82346E0053DA1D0DAC2B10.gr7.us-east-1.eks.amazonaws.com') {
                         sh '''
                             kubectl patch service bankapp-service -p "{\\"spec\\": {\\"selector\\": {\\"app\\": \\"bankapp\\", \\"version\\": \\"''' + newEnv + '''\\"}}}" -n ${KUBE_NAMESPACE}
                         '''
@@ -150,7 +154,7 @@ pipeline {
             steps {
                 script {
                     def verifyEnv = params.DEPLOY_ENV
-                   withKubeConfig(caCertificate: '', clusterName: 'prtk-cluster', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://E95C1D07BCFA0254F670A245D4E35ABA.gr7.us-east-1.eks.amazonaws.com') {
+                   withKubeConfig(caCertificate: '', clusterName: 'prtk-cluster', contextName: '', credentialsId: 'k8-cred', namespace: 'webapps', restrictKubeConfigAccess: false, serverUrl: 'https://ED1EEACC0C82346E0053DA1D0DAC2B10.gr7.us-east-1.eks.amazonaws.com') {
                         sh """
                         kubectl get pods -l version=${verifyEnv} -n ${KUBE_NAMESPACE}
                         kubectl get svc bankapp-service -n ${KUBE_NAMESPACE}
